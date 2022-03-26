@@ -1,0 +1,63 @@
+#nyanChat {
+  --fg: #0f0;
+  --bg: #0006;
+  --fg-transparent: #0f06;
+  --md: 30px;
+  --lg: calc(2 * var(--md));
+  --sm: calc(var(--md) / 2);
+  font: mono;
+
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  bottom: var(--md);
+  left: var(--md);
+  padding: var(--md);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: var(--md);
+  font-family: var(font);
+  line-height: var(--lg);
+  max-height: calc(100vh - 2 * var(--lg));
+}
+
+#nyanChat ::-webkit-scrollbar {
+  height: 4px;
+  width: 4px;
+  background: transparent;
+}
+
+#nyanChat ::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background: var(--fg-transparent);
+}
+
+#nyanChat li {
+  display: flex;
+  flex-direction: column;
+}
+
+#nyanChat ul {
+  display: flex;
+  flex-direction: column;
+  list-style-type: none;
+  overflow-x: none;
+  overflow-y: auto;
+  overflow-y: overlay;
+}
+
+#nyanChat input {
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  color: var(--fg);
+  border: none;
+  border-bottom: 1px solid transparent;
+  font-size: var(--md);
+  font-family: var(font);
+  border-bottom: 1px solid var(--fg);
+}
+
+#nyanChat input:focus {
+  outline: none;
+}
