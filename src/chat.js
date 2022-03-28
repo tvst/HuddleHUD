@@ -1,4 +1,4 @@
-const MSG_REMOVE_TIMEOUT_MS = 180000
+const MSG_REMOVE_TIMEOUT_MS = 60000
 const WRAPPER_HIDE_TIMEOUT_MS = 15000
 
 let wrapper, messageListEl, inputBox
@@ -14,6 +14,7 @@ function drawInterface() {
   wrapper.appendChild(messageListEl)
 
   inputBox = document.createElement("input")
+  inputBox.placeholder = "Press \"𝚌𝚝𝚛𝚕-,\" to focus input box"
 
   inputBox.addEventListener("blur", (event) => {
     window.setTimeout(maybeHideWrapper, WRAPPER_HIDE_TIMEOUT_MS)
@@ -32,7 +33,7 @@ function drawInterface() {
 
         if (msgContents.length) {
           chrome.runtime.sendMessage({
-            command: "say",
+            command: "userMessage",
             msgContents,
             url: document.location.href,
           })
@@ -77,8 +78,6 @@ function drawMessage({nick, msgContents}) {
     msgEl.remove()
     setTimeout(maybeHideWrapper, WRAPPER_HIDE_TIMEOUT_MS)
   }, MSG_REMOVE_TIMEOUT_MS)
-
-  setTimeout(hideWrapper, WRAPPER_HIDE_TIMEOUT_MS)
 }
 
 const COLORS = [
@@ -107,7 +106,24 @@ function getColor(str) {
 
 const isRootFrame = window.parent === window
 
-if (isRootFrame) {
+async function getAllowedUrls() {
+  const {allowedUrls} = await chrome.storage.sync.get(['allowedUrls'])
+  return allowedUrls
+}
+
+async function isUrlAllowed(url) {
+  const allowedUrls = await getAllowedUrls()
+
+  if (allowedUrls.length == 0) return true
+
+  return allowedUrls.some((substring) =>
+    substring.trim().length == 0 ||  // Empty pattern means "match all".
+    url.indexOf(substring.trim()) >= 0)
+}
+
+isUrlAllowed(document.location.href).then((isAllowed) => {
+  if (!isAllowed || !isRootFrame) return
+
   drawInterface()
 
   document.addEventListener("keydown", (event) => {
@@ -119,7 +135,7 @@ if (isRootFrame) {
 
   document.addEventListener("onunload", (event) => {
     chrome.runtime.sendMessage({
-      command: "unsubscribe",
+      command: "documentUnloaded",
       url: document.location.href,
     })
   })
@@ -128,16 +144,24 @@ if (isRootFrame) {
     console.log("onMessage", msg)
 
     switch (msg.command) {
+      case "onSubscribed": {
+        if (messageListEl) {
+          messageListEl.innerHTML = ""
+        }
+      }
+      break;
+
       case "onNewMessage": {
         drawMessage(msg.data)
       }
+      break;
     }
 
     return true
   })
 
   chrome.runtime.sendMessage({
-    command: "subscribe",
+    command: "contentScriptLoaded",
     url: document.location.href,
   })
-}
+})

@@ -1,22 +1,28 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <link href="options.css" rel="stylesheet">
   </head>
   <body>
-
-    <div>
-      <label>Nickname
+    <div id="all">
+      <section>
+        <label for="nicknameInput">Nickname</label>
         <input type="text" id="nicknameInput" />
-      </label>
-    </div>
+      </section>
 
-    <div>
-      <label>Channel
+      <section>
+        <label for="channelInput">Channel</label>
         <input type="text" id="channelInput" />
-      </label>
-    </div>
+      </section>
 
-    <button id="saveButton">Save</button>
+      <section>
+        <label for="allowedUrlsInput">Allowed URLs</label>
+        <textarea id="allowedUrlsInput" placeholder="foo.com/bar"></textarea>
+        <small>One per line. If empty, allows all.</small>
+      </section>
+
+      <button id="saveButton">Save</button>
+    </div>
 
     <script src="options.js"></script>
   </body>

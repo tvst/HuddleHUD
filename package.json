@@ -58,6 +58,10 @@
             {
                 "name": "chat",
                 "src": "./src/chat.css"
+            },
+            {
+                "name": "options",
+                "src": "./src/options.css"
             }
         ]
     },

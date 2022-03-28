@@ -1,0 +1,23 @@
+body {
+  line-height: 1.5rem;
+}
+
+#all {
+  width: 30rem;
+  padding: 1rem;
+  max-width: 80vw;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+section {
+  display: flex;
+  flex-direction: column;
+}
+
+button,
+textarea,
+input {
+  line-height: 1.5rem;
+}

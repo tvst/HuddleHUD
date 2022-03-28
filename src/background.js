@@ -7,7 +7,9 @@ import {
   ref,
   query,
   limitToLast,
+  orderByChild,
   onChildAdded,
+  serverTimestamp,
 } from "firebase/database"
 import md5 from "md5"
 
@@ -25,7 +27,7 @@ const firebaseConfig = {
 
 const A_WHILE_BACK = 15 * 1000  // 15 seconds
 
-// Map of tabId to {cancelChildListener}
+// Map of tabId to {cancelChildListener, url}
 const subscriptions = new Map()
 
 
@@ -39,12 +41,6 @@ async function getChannel() {
   return channel
 }
 
-function getCleanUrl(url) {
-  const urlObj = new URL(url)
-  return `${urlObj.hostname}/${urlObj.pathname}`
-}
-
-
 initializeApp(firebaseConfig)
 const db = getDatabase()
 
@@ -52,7 +48,8 @@ const db = getDatabase()
 chrome.runtime.onInstalled.addListener(() => {
   const nick = makeRandomNick()
   const channel = "default"
-  chrome.storage.sync.set({ nick, channel })
+  const allowedUrls = []
+  chrome.storage.sync.set({ nick, channel, allowedUrls })
 })
 
 
@@ -60,7 +57,7 @@ chrome.runtime.onMessage.addListener((msg, sender, response) => {
     console.log("onMessage", msg.command, msg, sender, response)
 
     switch (msg.command) {
-      case "say": {
+      case "userMessage": {
         say({
           msgContents: msg.msgContents,
           url: msg.url,
@@ -68,17 +65,13 @@ chrome.runtime.onMessage.addListener((msg, sender, response) => {
       }
       break
 
-      case "subscribe": {
-        subscribe(msg.url, sender.tab.id)
-        say({
-          msgContents: "*joined room*",
-          url: msg.url,
-        })
+      case "contentScriptLoaded": {
+        subscribeAndAnnounce(msg.url, sender.tab.id)
       }
       break
 
-      case "unsubscribe": {
-        unsubscribe(sender.tab.id)
+      case "documentUnloaded": {
+        announceAndUnsubscribe(sender.tab.id)
       }
       break
     }
@@ -88,34 +81,84 @@ chrome.runtime.onMessage.addListener((msg, sender, response) => {
 
 
 chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
-  console.log("Unsubscribing tab", tabId)
-  unsubscribe(tabId)
+  announceAndUnsubscribe(tabId)
+})
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (!subscriptions.has(tabId)) return
+
+  if (changeInfo.status === "complete") {
+    await announceAndUnsubscribe(tabId)
+    // No need to subscribe since the content
+    //subscribeAndAnnounce(tab.url, tabId)
+  }
 })
 
 
+async function subscribeAndAnnounce(url, tabId) {
+  if (subscriptions.has(tabId)) return
+
+  await subscribe(url, tabId)
+
+  // await chrome.tabs.sendMessage(tabId, {
+  //   command: "onSubscribed",
+  // })
+
+  console.log("announcing")
+
+  say({
+    msgContents: "*joined room*",
+    url,
+  })
+}
+
+
 async function subscribe(url, tabId) {
+  if (subscriptions.has(tabId)) return
+
+  console.log("Subscribing tab", tabId)
+
   const cancelChildListener = onChildAdded(
     query(
       await getChannelRef(url),
-      limitToLast(5),
+      limitToLast(30),
+      orderByChild("timestamp"),
     ),
     (snapshot) => onNewMessage(snapshot, tabId))
 
-  subscriptions.set(tabId, {cancelChildListener})
+  subscriptions.set(tabId, {cancelChildListener, url})
+}
+
+
+async function announceAndUnsubscribe(tabId) {
+  if (!subscriptions.has(tabId)) return
+
+  const {url} = subscriptions.get(tabId)
+
+  say({
+    msgContents: "*left room*",
+    url,
+  })
+
+  unsubscribe(tabId)
 }
 
 
 function unsubscribe(tabId) {
-  if (subscriptions.has(tabId)) {
-    const {cancelChildListener} = subscriptions.get(tabId)
-    cancelChildListener()
-    subscriptions.delete(tabId)
-  }
+  if (!subscriptions.has(tabId)) return
+
+  console.log("Unsubscribing tab", tabId)
+
+  const {cancelChildListener} = subscriptions.get(tabId)
+  cancelChildListener()
+  subscriptions.delete(tabId)
 }
 
 
 async function getChannelPath(url) {
-  const urlHash = md5(getCleanUrl(url))
+  const urlObj = new URL(url)
+  const cleanUrl = `${urlObj.hostname}/${urlObj.pathname}`
+  const urlHash = md5(cleanUrl)
   const path = `messages/${urlHash}/${await getChannel()}`
   return path
 }
@@ -127,12 +170,12 @@ async function getChannelRef(url) {
 
 
 async function say({msgContents, url}) {
-  set(
+  await set(
     push(await getChannelRef(url)),
     {
       nick: await getNick(),
       msgContents,
-      timestamp: Date.now(),
+      timestamp: serverTimestamp(),
     }
   )
 }
@@ -150,7 +193,7 @@ function onNewMessage(snapshot, tabId) {
       })
     } catch (e) {
       console.log("Cannot send message to tab. See exception:", e)
-      unsubscribe(tabId)
+      announceAndUnsubscribe(tabId)
     }
 
   } else {
@@ -174,28 +217,19 @@ const ANIMALS = [
   "Ass",
   "Baboon",
   "Badger",
-  "Bald Eagle",
   "Barracuda",
   "Bass",
-  "Basset Hound",
   "Bat",
-  "Bearded Dragon",
   "Beaver",
   "Bedbug",
   "Bee",
-  "Bee-eater",
   "Bird",
   "Bison",
-  "Black panther",
-  "Black Widow Spider",
-  "Blue Jay",
-  "Blue Whale",
   "Bobcat",
   "Buffalo",
   "Butterfly",
   "Buzzard",
   "Camel",
-  "Canada Lynx",
   "Carp",
   "Cat",
   "Caterpillar",
@@ -211,7 +245,6 @@ const ANIMALS = [
   "Cow",
   "Coyote",
   "Crab",
-  "Crane Fly",
   "Cricket",
   "Crocodile",
   "Crow",
@@ -222,6 +255,7 @@ const ANIMALS = [
   "Dolphin",
   "Donkey",
   "Dove",
+  "Dragon",
   "Dragonfly",
   "Duck",
   "Eagle",
@@ -241,14 +275,12 @@ const ANIMALS = [
   "Goose",
   "Gopher",
   "Gorilla",
-  "Guinea Pig",
   "Hamster",
   "Hare",
   "Hawk",
   "Hippopotamus",
   "Horse",
   "Hummingbird",
-  "Humpback Whale",
   "Husky",
   "Iguana",
   "Impala",
@@ -260,12 +292,10 @@ const ANIMALS = [
   "Llama",
   "Lobster",
   "Margay",
-  "Monitor lizard",
   "Monkey",
   "Moose",
   "Mosquito",
   "Moth",
-  "Mountain Zebra",
   "Mouse",
   "Mule",
   "Octopus",
@@ -284,14 +314,12 @@ const ANIMALS = [
   "Pheasant",
   "Pig",
   "Pigeon",
-  "Polar bear",
   "Porcupine",
   "Quagga",
   "Rabbit",
   "Raccoon",
   "Rat",
   "Rattlesnake",
-  "Red Wolf",
   "Rooster",
   "Seal",
   "Sheep",
