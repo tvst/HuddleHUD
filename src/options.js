@@ -3,7 +3,7 @@ saveButton.addEventListener('click', () => {
   const channel = channelInput.value.trim()
 
   if (nick && channel) {
-    chrome.storage.sync.set({nick, channel});
+    chrome.storage.sync.set({nick, channel})
   } else {
     alert("Please enter a valid nickname and channel")
   }
@@ -16,4 +16,4 @@ function initialize() {
   })
 }
 
-initialize();
+initialize()
