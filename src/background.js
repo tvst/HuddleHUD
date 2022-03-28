@@ -1,5 +1,4 @@
 import { initializeApp } from "firebase/app"
-import { GoogleAuthProvider } from "firebase/auth"
 import {
   getDatabase,
   set,
@@ -13,6 +12,7 @@ import {
 import md5 from "md5"
 
 
+// XXX TODO replace
 const firebaseConfig = {
   apiKey: "AIzaSyB6FtDG4DVdYMrNk-VuKzuXyt2OSzZ_2w0",
   authDomain: "nyanchat-7e87a.firebaseapp.com",
@@ -25,26 +25,33 @@ const firebaseConfig = {
 
 const A_WHILE_BACK = 15 * 1000  // 15 seconds
 
-let nick, channel
-
 // Map of tabId to {cancelChildListener}
 const subscriptions = new Map()
 
 
-chrome.storage.sync.get(null, (settings) => {
-  nick = settings.nick
-  channel = settings.channel
-})
+async function getNick() {
+  const {nick} = await chrome.storage.sync.get(['nick'])
+  return nick
+}
+
+async function getChannel() {
+  const {channel} = await chrome.storage.sync.get(['channel'])
+  return channel
+}
+
+function getCleanUrl(url) {
+  const urlObj = new URL(url)
+  return `${urlObj.hostname}/${urlObj.pathname}`
+}
 
 
 initializeApp(firebaseConfig)
 const db = getDatabase()
-const provider = new GoogleAuthProvider()
 
 
 chrome.runtime.onInstalled.addListener(() => {
-  nick = makeRandomNick(16)
-  channel = "default"
+  const nick = makeRandomNick()
+  const channel = "default"
   chrome.storage.sync.set({ nick, channel })
 })
 
@@ -53,60 +60,27 @@ chrome.runtime.onMessage.addListener((msg, sender, response) => {
     console.log("onMessage", msg.command, msg, sender, response)
 
     switch (msg.command) {
-      case "logoutAuth": {
-        firebase.auth().signOut().then(function () {
-          // Sign-out successful.
-          response({ type: "un-auth", status: "success", message: true })
-        }, function (error) {
-            // An error happened.
-            response({ type: "un-auth", status: "false", message: error })
-          })
-      }
-
-      case "checkAuth": {
-        const user = firebase.auth().currentUser
-        if (user) {
-          // User is signed in.
-          response({ type: "auth", status: "success", message: user })
-        } else {
-          // No user is signed in.
-          response({ type: "auth", status: "no-auth", message: false })
-        }
-      }
-
-      case "loginUser": {
-        firebase.auth()
-          .signInWithPopup(provider)
-          .then((result) => {
-            user = result.user
-            response({ type: "auth", status: "success", message: user })
-          }).catch((error) => {
-            // Handle Errors here.
-            const errorMessage = error.message
-            response({ type: "auth", status: "error", message: errorMessage })
-          })
-      }
-
       case "say": {
         say({
           msgContents: msg.msgContents,
           url: msg.url,
         })
       }
+      break
 
       case "subscribe": {
-        const cancelChildListener = onChildAdded(
-          query(getChannelRef(msg.url)),
-          //   limitToLast(5)
-          // ),
-          (snapshot) => onNewMessage(snapshot, sender.tab.id))
-
-        subscriptions.set(sender.tab.id, {cancelChildListener})
+        subscribe(msg.url, sender.tab.id)
+        say({
+          msgContents: "*joined room*",
+          url: msg.url,
+        })
       }
+      break
 
       case "unsubscribe": {
         unsubscribe(sender.tab.id)
       }
+      break
     }
 
     return true
@@ -119,6 +93,18 @@ chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
 })
 
 
+async function subscribe(url, tabId) {
+  const cancelChildListener = onChildAdded(
+    query(
+      await getChannelRef(url),
+      limitToLast(5),
+    ),
+    (snapshot) => onNewMessage(snapshot, tabId))
+
+  subscriptions.set(tabId, {cancelChildListener})
+}
+
+
 function unsubscribe(tabId) {
   if (subscriptions.has(tabId)) {
     const {cancelChildListener} = subscriptions.get(tabId)
@@ -128,22 +114,23 @@ function unsubscribe(tabId) {
 }
 
 
-function getChannelPath(url) {
-  const urlHash = md5(url)
-  return `messages/${urlHash}/${channel}`
+async function getChannelPath(url) {
+  const urlHash = md5(getCleanUrl(url))
+  const path = `messages/${urlHash}/${await getChannel()}`
+  return path
 }
 
 
-function getChannelRef(url) {
-  return ref(db, getChannelPath(url))
+async function getChannelRef(url) {
+  return ref(db, await getChannelPath(url))
 }
 
 
-function say({msgContents, url}) {
+async function say({msgContents, url}) {
   set(
-    push(getChannelRef(url)),
+    push(await getChannelRef(url)),
     {
-      nick,
+      nick: await getNick(),
       msgContents,
       timestamp: Date.now(),
     }
@@ -173,16 +160,156 @@ function onNewMessage(snapshot, tabId) {
 }
 
 
-const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-const charactersLength = characters.length
+const ANIMALS = [
+  "Aardvark",
+  "Alligator",
+  "Alpaca",
+  "Anaconda",
+  "Ant",
+  "Anteater",
+  "Antelope",
+  "Aphid",
+  "Armadillo",
+  "Asp",
+  "Ass",
+  "Baboon",
+  "Badger",
+  "Bald Eagle",
+  "Barracuda",
+  "Bass",
+  "Basset Hound",
+  "Bat",
+  "Bearded Dragon",
+  "Beaver",
+  "Bedbug",
+  "Bee",
+  "Bee-eater",
+  "Bird",
+  "Bison",
+  "Black panther",
+  "Black Widow Spider",
+  "Blue Jay",
+  "Blue Whale",
+  "Bobcat",
+  "Buffalo",
+  "Butterfly",
+  "Buzzard",
+  "Camel",
+  "Canada Lynx",
+  "Carp",
+  "Cat",
+  "Caterpillar",
+  "Catfish",
+  "Cheetah",
+  "Chicken",
+  "Chimpanzee",
+  "Chipmunk",
+  "Cobra",
+  "Cod",
+  "Condor",
+  "Cougar",
+  "Cow",
+  "Coyote",
+  "Crab",
+  "Crane Fly",
+  "Cricket",
+  "Crocodile",
+  "Crow",
+  "Cuckoo",
+  "Deer",
+  "Dinosaur",
+  "Dog",
+  "Dolphin",
+  "Donkey",
+  "Dove",
+  "Dragonfly",
+  "Duck",
+  "Eagle",
+  "Eel",
+  "Elephant",
+  "Emu",
+  "Falcon",
+  "Ferret",
+  "Finch",
+  "Fish",
+  "Flamingo",
+  "Flea",
+  "Fly",
+  "Fox",
+  "Frog",
+  "Goat",
+  "Goose",
+  "Gopher",
+  "Gorilla",
+  "Guinea Pig",
+  "Hamster",
+  "Hare",
+  "Hawk",
+  "Hippopotamus",
+  "Horse",
+  "Hummingbird",
+  "Humpback Whale",
+  "Husky",
+  "Iguana",
+  "Impala",
+  "Kangaroo",
+  "Lemur",
+  "Leopard",
+  "Lion",
+  "Lizard",
+  "Llama",
+  "Lobster",
+  "Margay",
+  "Monitor lizard",
+  "Monkey",
+  "Moose",
+  "Mosquito",
+  "Moth",
+  "Mountain Zebra",
+  "Mouse",
+  "Mule",
+  "Octopus",
+  "Orca",
+  "Ostrich",
+  "Otter",
+  "Owl",
+  "Ox",
+  "Oyster",
+  "Panda",
+  "Parrot",
+  "Peacock",
+  "Pelican",
+  "Penguin",
+  "Perch",
+  "Pheasant",
+  "Pig",
+  "Pigeon",
+  "Polar bear",
+  "Porcupine",
+  "Quagga",
+  "Rabbit",
+  "Raccoon",
+  "Rat",
+  "Rattlesnake",
+  "Red Wolf",
+  "Rooster",
+  "Seal",
+  "Sheep",
+  "Skunk",
+  "Sloth",
+  "Snail",
+  "Snake",
+  "Spider",
+  "Tiger",
+  "Whale",
+  "Wolf",
+  "Wombat",
+  "Zebra",
+]
 
-function makeRandomNick(length) {
-  const result = []
-  for (var i = 0; i < length; i++) {
-    result.push(characters.charAt(Math.floor(Math.random() * charactersLength)))
-  }
-  return result.join("")
+function makeRandomNick() {
+  const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)]
+  return animal + Math.floor(Math.random() * 10000)
 }
-
 
 console.log("Running!")

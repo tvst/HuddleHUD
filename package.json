@@ -1,12 +1,12 @@
 {
-    "name": "nyanchat",
-    "description": "HUD chat",
+    "name": "HuddleHUD",
+    "description": "Ephemeral chat in a heads-up display in every webpage.",
     "version": "0.0.1",
-    "homepage": "http://chrome.google.com/webstore",
+    "homepage": "http://chrome.google.com/webstore/XXX",
     "author": "Thiago Teixeira",
     "repository": {
         "type": "git",
-        "url": "ENTER GIT REPO URL"
+        "url": "XXX ENTER GIT REPO URL"
     },
     "scripts": {
         "start": "xt-build -e dev -w",
@@ -48,6 +48,10 @@
             {
                 "name": "chat",
                 "src": "./src/chat.js"
+            },
+            {
+                "name": "options",
+                "src": "./src/options.js"
             }
         ],
         "scss_bundles": [

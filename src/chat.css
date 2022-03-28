@@ -1,8 +1,8 @@
-#nyanChat {
-  --fg: #0f0;
-  --bg: #0006;
-  --fg-transparent: #0f06;
-  --md: 30px;
+#HuddleHUD {
+  --fg: #fff;
+  --bg: #000;
+  --fg-transparent: #fff6;
+  --md: 20px;
   --lg: calc(2 * var(--md));
   --sm: calc(var(--md) / 2);
   font: mono;
@@ -19,34 +19,38 @@
   font-family: var(font);
   line-height: var(--lg);
   max-height: calc(100vh - 2 * var(--lg));
+  min-width: 33vw;
+  max-width: calc(100vw - 2 * var(--lg));
 }
 
-#nyanChat ::-webkit-scrollbar {
-  height: 4px;
-  width: 4px;
+#HuddleHUD ::-webkit-scrollbar {
+  height: 3px;
+  width: 3px;
   background: transparent;
 }
 
-#nyanChat ::-webkit-scrollbar-thumb {
-  border-radius: 4px;
+#HuddleHUD ::-webkit-scrollbar-thumb {
+  border-radius: 3px;
   background: var(--fg-transparent);
 }
 
-#nyanChat li {
+#HuddleHUD li {
   display: flex;
   flex-direction: column;
 }
 
-#nyanChat ul {
+#HuddleHUD ul {
   display: flex;
   flex-direction: column;
   list-style-type: none;
   overflow-x: none;
   overflow-y: auto;
   overflow-y: overlay;
+  margin: 0;
+  padding: 0;
 }
 
-#nyanChat input {
+#HuddleHUD input {
   display: flex;
   flex-direction: column;
   background: transparent;
@@ -58,6 +62,6 @@
   border-bottom: 1px solid var(--fg);
 }
 
-#nyanChat input:focus {
+#HuddleHUD input:focus {
   outline: none;
 }

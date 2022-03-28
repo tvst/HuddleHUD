@@ -1,11 +1,11 @@
 {
     "appName": {
-        "message": "nyanchat"
+        "message": "HuddleHUD"
     },
     "appShortName": {
-        "message": "nyanchat"
+        "message": "HuddleHUD"
     },
     "appDescription": {
-        "message": "HUD chat"
+        "message": "Ephemeral chat in a heads-up display in every webpage."
     }
 }

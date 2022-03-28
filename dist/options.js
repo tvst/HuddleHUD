@@ -1,3 +1,8 @@
+/******/ (() => { // webpackBootstrap
+var __webpack_exports__ = {};
+/*!************************!*\
+  !*** ./src/options.js ***!
+  \************************/
 document.getElementById("saveButton").addEventListener('click', () => {
   const nick = document.getElementById("nicknameInput").value.trim()
   const channel = document.getElementById("channelInput").value.trim()
@@ -17,3 +22,7 @@ async function initialize() {
 }
 
 initialize()
+
+/******/ })()
+;
+//# sourceMappingURL=options.js.map

@@ -3,7 +3,7 @@ var __webpack_exports__ = {};
 /*!*********************!*\
   !*** ./src/chat.js ***!
   \*********************/
-const MSG_REMOVE_TIMEOUT_MS = 60000
+const MSG_REMOVE_TIMEOUT_MS = 180000
 const WRAPPER_HIDE_TIMEOUT_MS = 15000
 
 let wrapper, messageListEl, inputBox
@@ -12,28 +12,40 @@ let wrapper, messageListEl, inputBox
 
 function drawInterface() {
   wrapper = document.createElement("div")
-  wrapper.id = "nyanChat"
+  wrapper.id = "HuddleHUD"
   wrapper.style.display = "none"
 
   messageListEl = document.createElement("ul")
   wrapper.appendChild(messageListEl)
 
   inputBox = document.createElement("input")
-  inputBox.style.display = "none"
 
   inputBox.addEventListener("blur", (event) => {
     window.setTimeout(maybeHideWrapper, WRAPPER_HIDE_TIMEOUT_MS)
   })
 
   inputBox.addEventListener("keydown", (event) => {
-    if (event.key == "Enter") {
-      chrome.runtime.sendMessage({
-        command: "say",
-        msgContents: inputBox.value,
-        url: getCleanUrl(),
-      })
+    switch (event.key) {
+      case "Esc":
+      case "Escape": {
+        hideWrapper()
+      }
+      break
 
-      inputBox.value = ""
+      case "Enter": {
+        const msgContents = inputBox.value.trim()
+
+        if (msgContents.length) {
+          chrome.runtime.sendMessage({
+            command: "say",
+            msgContents,
+            url: document.location.href,
+          })
+        }
+
+        inputBox.value = ""
+      }
+      break
     }
   })
 
@@ -56,22 +68,12 @@ function maybeHideWrapper() {
   }
 }
 
-function showInputBox() {
-  inputBox.style.display = ""
-  showWrapper()
-  inputBox.focus()
-}
-
-function hideInputBox() {
-  inputBox.style.display = "none"
-  maybeHideWrapper()
-}
-
 function drawMessage({nick, msgContents}) {
   console.log("Drawing:", nick, msgContents)
 
   const msgEl = document.createElement("li")
-  msgEl.innerText = `[${nick}] ${msgContents}`
+  msgEl.style.color = getColor(nick)
+  msgEl.innerText = `${nick}: ${msgContents}`
   messageListEl.appendChild(msgEl)
 
   showWrapper()
@@ -80,10 +82,29 @@ function drawMessage({nick, msgContents}) {
     msgEl.remove()
     setTimeout(maybeHideWrapper, WRAPPER_HIDE_TIMEOUT_MS)
   }, MSG_REMOVE_TIMEOUT_MS)
+
+  setTimeout(hideWrapper, WRAPPER_HIDE_TIMEOUT_MS)
 }
 
-function getCleanUrl() {
-  return `${document.location.hostname}/${document.location.pathname}`
+const COLORS = [
+  "#ff4444",
+  "#44ff44",
+  "#4444ff",
+  "#ffff44",
+  "#44ffff",
+  "#ff44ff",
+]
+
+const colorAssignments = new Map();
+
+function getColor(str) {
+  if (colorAssignments.has(str)) {
+    return colorAssignments.get(str)
+  }
+
+  const color = COLORS[colorAssignments.size]
+  colorAssignments.set(str, color)
+  return color
 }
 
 
@@ -96,15 +117,15 @@ if (isRootFrame) {
 
   document.addEventListener("keydown", (event) => {
     if (event.ctrlKey && event.key == ",") {
-      console.log("Ctrl-,")
-      showInputBox()
+      showWrapper()
+      inputBox.focus()
     }
   })
 
   document.addEventListener("onunload", (event) => {
     chrome.runtime.sendMessage({
       command: "unsubscribe",
-      url: getCleanUrl(),
+      url: document.location.href,
     })
   })
 
@@ -122,7 +143,7 @@ if (isRootFrame) {
 
   chrome.runtime.sendMessage({
     command: "subscribe",
-    url: getCleanUrl(),
+    url: document.location.href,
   })
 }
 
