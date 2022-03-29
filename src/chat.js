@@ -18,7 +18,7 @@ function drawInterface() {
   inputBox.placeholder = "Press \"𝚌𝚝𝚛𝚕-,\" to focus input box"
 
   inputBox.addEventListener("blur", (event) => {
-    window.setTimeout(maybeHideWrapper, WRAPPER_HIDE_TIMEOUT_MS)
+    setTimeout(maybeHideWrapper, WRAPPER_HIDE_TIMEOUT_MS)
   })
 
   inputBox.addEventListener("keydown", (event) => {
@@ -130,8 +130,6 @@ async function isUrlAllowed(url) {
 isUrlAllowed(document.location.href).then((isAllowed) => {
   if (!isAllowed || !isRootFrame) return
 
-  drawInterface()
-
   document.addEventListener("keydown", (event) => {
     if (event.ctrlKey && event.key == ",") {
       showWrapper()
@@ -163,8 +161,13 @@ isUrlAllowed(document.location.href).then((isAllowed) => {
     messageListEl.innerHTML = ""
   }
 
-  chrome.runtime.sendMessage({
-    command: "contentScriptLoaded",
-    url: document.location.href,
-  })
+  // Timeout is a hack to help extension load in all pages.
+  setTimeout(() => {
+    drawInterface()
+
+    chrome.runtime.sendMessage({
+      command: "contentScriptLoaded",
+      url: document.location.href,
+    })
+  }, 1000)
 })
