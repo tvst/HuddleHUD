@@ -22,6 +22,8 @@ function drawInterface() {
   })
 
   inputBox.addEventListener("keydown", (event) => {
+    event.stopPropagation()
+
     switch (event.key) {
       case "Esc":
       case "Escape": {
