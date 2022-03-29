@@ -13,11 +13,11 @@ document.getElementById("saveButton").addEventListener('click', () => {
 })
 
 async function initialize() {
-  const {nick, channel, allowedUrls} =
-    await chrome.storage.sync.get(["nick", "channel", "allowedUrls"])
-  document.getElementById("nicknameInput").value = nick
-  document.getElementById("channelInput").value = channel
-  document.getElementById("allowedUrlsInput").value = allowedUrls.join("\n")
+  chrome.storage.sync.get(["nick", "channel", "allowedUrls"], ({nick, channel, allowedUrls}) => {
+    document.getElementById("nicknameInput").value = nick
+    document.getElementById("channelInput").value = channel
+    document.getElementById("allowedUrlsInput").value = allowedUrls.join("\n")
+  })
 }
 
 initialize()
