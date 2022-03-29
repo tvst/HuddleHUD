@@ -8,6 +8,7 @@ import {
   query,
   limitToLast,
   orderByChild,
+  orderByKey,
   onChildAdded,
   serverTimestamp,
 } from "firebase/database"
@@ -25,20 +26,26 @@ const firebaseConfig = {
   appId: "1:43446083827:web:e16976b96ce8af8658d786"
 }
 
-const A_WHILE_BACK = 15 * 1000  // 15 seconds
+const A_WHILE_BACK = 2 * 60 * 1000  // 2min
 
 // Map of tabId to {cancelChildListener, url}
 const subscriptions = new Map()
 
 
 async function getNick() {
-  const {nick} = await chrome.storage.sync.get(['nick'])
-  return nick
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['nick'], ({nick}) => {
+      resolve(nick)
+    })
+  })
 }
 
 async function getChannel() {
-  const {channel} = await chrome.storage.sync.get(['channel'])
-  return channel
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['channel'], ({channel}) => {
+      resolve(channel)
+    })
+  })
 }
 
 initializeApp(firebaseConfig)
@@ -53,8 +60,8 @@ chrome.runtime.onInstalled.addListener(() => {
 })
 
 
-chrome.runtime.onMessage.addListener((msg, sender, response) => {
-    console.log("onMessage", msg.command, msg, sender, response)
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    console.log("onMessage", msg.command, msg, sender)
 
     switch (msg.command) {
       case "userMessage": {
@@ -76,7 +83,7 @@ chrome.runtime.onMessage.addListener((msg, sender, response) => {
       break
     }
 
-    return true
+    sendResponse({})
 })
 
 
@@ -100,16 +107,13 @@ async function subscribeAndAnnounce(url, tabId) {
 
   await subscribe(url, tabId)
 
-  // await chrome.tabs.sendMessage(tabId, {
-  //   command: "onSubscribed",
-  // })
-
-  console.log("announcing")
-
-  say({
-    msgContents: "*joined room*",
-    url,
-  })
+  // timeout is a hack to load the room before posting "joined" message.
+  setTimeout(() => {
+    say({
+      msgContents: "*joined room*",
+      url,
+    })
+  }, 500)
 }
 
 
@@ -121,8 +125,9 @@ async function subscribe(url, tabId) {
   const cancelChildListener = onChildAdded(
     query(
       await getChannelRef(url),
+      //orderByChild("timestamp"),
+      orderByKey(),
       limitToLast(30),
-      orderByChild("timestamp"),
     ),
     (snapshot) => onNewMessage(snapshot, tabId))
 
@@ -173,9 +178,9 @@ async function say({msgContents, url}) {
   await set(
     push(await getChannelRef(url)),
     {
+      timestamp: serverTimestamp(),
       nick: await getNick(),
       msgContents,
-      timestamp: serverTimestamp(),
     }
   )
 }
@@ -195,10 +200,6 @@ function onNewMessage(snapshot, tabId) {
       console.log("Cannot send message to tab. See exception:", e)
       announceAndUnsubscribe(tabId)
     }
-
-  } else {
-    // Delete old messages from Firebase DB.
-    remove(snapshot.ref)
   }
 }
 

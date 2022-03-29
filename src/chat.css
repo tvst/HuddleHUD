@@ -5,7 +5,7 @@
   --md: 20px;
   --lg: calc(2 * var(--md));
   --sm: calc(var(--md) / 2);
-  font: mono;
+  --font: sans-serif;
 
   display: flex;
   flex-direction: column;
@@ -16,7 +16,7 @@
   background: var(--bg);
   color: var(--fg);
   font-size: var(--md);
-  font-family: var(font);
+  font-family: var(--font);
   line-height: var(--lg);
   max-height: calc(100vh - 2 * var(--sm) - 2 * var(--md));
   min-width: 20em;
@@ -58,7 +58,7 @@
   color: var(--fg);
   border: none;
   font-size: var(--md);
-  font-family: var(font);
+  font-family: var(--font);
   line-height: var(--lg);
 }
 

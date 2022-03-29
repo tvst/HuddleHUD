@@ -1,7 +1,8 @@
 const MSG_REMOVE_TIMEOUT_MS = 60000
 const WRAPPER_HIDE_TIMEOUT_MS = 15000
 
-let wrapper, messageListEl, inputBox
+let wrapper, inputBox
+let messageListEl = document.querySelector("#HuddleHud > ul")
 
 // Functions
 
@@ -106,9 +107,12 @@ function getColor(str) {
 
 const isRootFrame = window.parent === window
 
-async function getAllowedUrls() {
-  const {allowedUrls} = await chrome.storage.sync.get(['allowedUrls'])
-  return allowedUrls
+function getAllowedUrls() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['allowedUrls'], ({allowedUrls}) => {
+      resolve(allowedUrls)
+    })
+  })
 }
 
 async function isUrlAllowed(url) {
@@ -140,25 +144,22 @@ isUrlAllowed(document.location.href).then((isAllowed) => {
     })
   })
 
-  chrome.runtime.onMessage.addListener((msg, sender, response) => {
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     console.log("onMessage", msg)
 
     switch (msg.command) {
-      case "onSubscribed": {
-        if (messageListEl) {
-          messageListEl.innerHTML = ""
-        }
-      }
-      break;
-
       case "onNewMessage": {
         drawMessage(msg.data)
       }
       break;
     }
 
-    return true
+    sendResponse({})
   })
+
+  if (messageListEl) {
+    messageListEl.innerHTML = ""
+  }
 
   chrome.runtime.sendMessage({
     command: "contentScriptLoaded",
